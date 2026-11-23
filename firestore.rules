@@ -1,0 +1,397 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Pillar 1 / Phase 4: Default-deny catch-all safety net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // -----------------------------------------------------------------------
+    // Global Hardened Primitives
+    // -----------------------------------------------------------------------
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isValidCompositeId(id) {
+      return id is string && id.size() >= 3 && id.size() <= 256 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isValidJoinCode(code) {
+      return code is string && code.size() >= 6 && code.size() <= 12 && code.matches('^[A-Z0-9]+$');
+    }
+
+    function isOwner(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
+    function userDocExists(uid) {
+      return exists(/databases/$(database)/documents/users/$(uid));
+    }
+
+    function getUserRole(uid) {
+      return get(/databases/$(database)/documents/users/$(uid)).data.role;
+    }
+
+    function isTeacher(uid) {
+      return isSignedIn() && userDocExists(uid) && getUserRole(uid) == 'teacher';
+    }
+
+    function isStudent(uid) {
+      return isSignedIn() && userDocExists(uid) && getUserRole(uid) == 'student';
+    }
+
+    function isValidGrade(grade) {
+      return grade is int && grade >= 6 && grade <= 10;
+    }
+
+    // -----------------------------------------------------------------------
+    // Validation Blueprints
+    // -----------------------------------------------------------------------
+    function isValidUserProfile(data, uid) {
+      return data.keys().hasAll(['uid', 'name', 'email', 'role', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['uid', 'name', 'email', 'role', 'selectedClass', 'schoolOrSubject', 'createdAt', 'updatedAt'])
+        && data.uid == uid
+        && data.uid == request.auth.uid
+        && isValidId(data.uid)
+        && data.name is string && data.name.size() >= 1 && data.name.size() <= 100
+        && data.email is string && data.email.size() >= 3 && data.email.size() <= 254
+        && data.role in ['student', 'teacher']
+        && (
+          data.role != 'student'
+          || ('selectedClass' in data && isValidGrade(data.selectedClass))
+        )
+        && (
+          !('selectedClass' in data)
+          || isValidGrade(data.selectedClass)
+        )
+        && (
+          !('schoolOrSubject' in data)
+          || (data.schoolOrSubject is string && data.schoolOrSubject.size() <= 120)
+        )
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidPhysicsClass(data, classId) {
+      return data.keys().hasAll(['classId', 'teacherId', 'teacherName', 'className', 'classGrade', 'joinCode', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['classId', 'teacherId', 'teacherName', 'className', 'classGrade', 'joinCode', 'description', 'createdAt', 'updatedAt'])
+        && data.classId == classId
+        && isValidId(data.classId)
+        && data.teacherId == request.auth.uid
+        && isValidId(data.teacherId)
+        && data.teacherName is string && data.teacherName.size() >= 1 && data.teacherName.size() <= 100
+        && data.className is string && data.className.size() >= 2 && data.className.size() <= 100
+        && isValidGrade(data.classGrade)
+        && isValidJoinCode(data.joinCode)
+        && (
+          !('description' in data)
+          || (data.description is string && data.description.size() <= 300)
+        )
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidClassJoinCode(data, joinCode) {
+      return data.keys().hasAll(['joinCode', 'classId', 'teacherId', 'teacherName', 'className', 'classGrade', 'createdAt'])
+        && data.keys().hasOnly(['joinCode', 'classId', 'teacherId', 'teacherName', 'className', 'classGrade', 'createdAt'])
+        && data.joinCode == joinCode
+        && isValidJoinCode(data.joinCode)
+        && isValidId(data.classId)
+        && data.teacherId == request.auth.uid
+        && isValidId(data.teacherId)
+        && data.teacherName is string && data.teacherName.size() >= 1 && data.teacherName.size() <= 100
+        && data.className is string && data.className.size() >= 2 && data.className.size() <= 100
+        && isValidGrade(data.classGrade)
+        && data.createdAt is timestamp;
+    }
+
+    function isValidClassMembership(data, membershipId) {
+      return data.keys().hasAll(['membershipId', 'classId', 'teacherId', 'teacherName', 'className', 'classGrade', 'joinCode', 'studentId', 'studentName', 'studentSelectedClass', 'joinedAt'])
+        && data.keys().hasOnly(['membershipId', 'classId', 'teacherId', 'teacherName', 'className', 'classGrade', 'joinCode', 'studentId', 'studentName', 'studentSelectedClass', 'joinedAt'])
+        && data.membershipId == membershipId
+        && isValidCompositeId(data.membershipId)
+        && isValidId(data.classId)
+        && isValidId(data.teacherId)
+        && data.teacherName is string && data.teacherName.size() >= 1 && data.teacherName.size() <= 100
+        && data.className is string && data.className.size() >= 2 && data.className.size() <= 100
+        && isValidGrade(data.classGrade)
+        && isValidJoinCode(data.joinCode)
+        && isValidId(data.studentId)
+        && data.studentName is string && data.studentName.size() >= 1 && data.studentName.size() <= 100
+        && isValidGrade(data.studentSelectedClass)
+        && data.joinedAt is timestamp;
+    }
+
+    function isValidStudentProgress(data, progressId) {
+      return data.keys().hasAll(['progressId', 'studentId', 'classId', 'classGrade', 'moduleId', 'experimentId', 'experimentTitle', 'completionStatus', 'recordedObservations', 'teacherIds', 'updatedAt'])
+        && data.keys().hasOnly(['progressId', 'studentId', 'classId', 'classGrade', 'moduleId', 'experimentId', 'experimentTitle', 'completionStatus', 'recordedObservations', 'quizScore', 'quizTotal', 'teacherIds', 'completedAt', 'updatedAt'])
+        && data.progressId == progressId
+        && isValidCompositeId(data.progressId)
+        && data.studentId == request.auth.uid
+        && isValidId(data.studentId)
+        && data.progressId == data.studentId + '_' + data.experimentId
+        && isValidId(data.classId)
+        && isValidGrade(data.classGrade)
+        && isValidId(data.moduleId)
+        && isValidId(data.experimentId)
+        && data.experimentTitle is string && data.experimentTitle.size() >= 1 && data.experimentTitle.size() <= 200
+        && data.completionStatus in ['in_progress', 'completed']
+        && data.recordedObservations is list
+        && data.recordedObservations.size() <= 20
+        && (data.recordedObservations.size() == 0 || (data.recordedObservations[0] is string && data.recordedObservations[0].size() <= 500))
+        && (
+          !('quizScore' in data)
+          || (data.quizScore is int && data.quizScore >= 0 && data.quizScore <= 100)
+        )
+        && (
+          !('quizTotal' in data)
+          || (data.quizTotal is int && data.quizTotal >= 1 && data.quizTotal <= 100)
+        )
+        && data.teacherIds is list
+        && data.teacherIds.size() <= 20
+        && (data.teacherIds.size() == 0 || isValidId(data.teacherIds[0]))
+        && (!('completedAt' in data) || data.completedAt is timestamp)
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidAssessmentResult(data, resultId) {
+      return data.keys().hasAll(['resultId', 'studentId', 'studentName', 'classId', 'classGrade', 'experimentId', 'experimentTitle', 'score', 'totalQuestions', 'teacherIds', 'completedAt'])
+        && data.keys().hasOnly(['resultId', 'studentId', 'studentName', 'classId', 'classGrade', 'experimentId', 'experimentTitle', 'score', 'totalQuestions', 'teacherIds', 'completedAt'])
+        && data.resultId == resultId
+        && isValidCompositeId(data.resultId)
+        && data.studentId == request.auth.uid
+        && isValidId(data.studentId)
+        && data.studentName is string && data.studentName.size() >= 1 && data.studentName.size() <= 100
+        && isValidId(data.classId)
+        && isValidGrade(data.classGrade)
+        && isValidId(data.experimentId)
+        && data.experimentTitle is string && data.experimentTitle.size() >= 1 && data.experimentTitle.size() <= 200
+        && data.score is int && data.score >= 0 && data.score <= 100
+        && data.totalQuestions is int && data.totalQuestions >= 1 && data.totalQuestions <= 100
+        && data.score <= data.totalQuestions
+        && data.teacherIds is list
+        && data.teacherIds.size() <= 20
+        && (data.teacherIds.size() == 0 || isValidId(data.teacherIds[0]))
+        && data.completedAt is timestamp;
+    }
+
+    // -----------------------------------------------------------------------
+    // Collection Rules
+    // -----------------------------------------------------------------------
+
+    // Users collection: strict PII isolation
+    match /users/{uid} {
+      allow get: if isValidId(uid) && isOwner(uid);
+      allow list: if false;
+
+      allow create: if isValidId(uid)
+        && isOwner(uid)
+        && isValidUserProfile(incoming(), uid)
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+
+      allow update: if isValidId(uid)
+        && isOwner(uid)
+        && isValidUserProfile(incoming(), uid)
+        && incoming().uid == existing().uid
+        && incoming().email == existing().email
+        && incoming().role == existing().role
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'selectedClass', 'schoolOrSubject', 'updatedAt']);
+
+      allow delete: if false;
+    }
+
+    // Classes collection: teacher-owned, enrolled students may get single class doc
+    match /classes/{classId} {
+      allow get: if isValidId(classId) && isSignedIn() && (
+        existing().teacherId == request.auth.uid
+        || exists(/databases/$(database)/documents/classMemberships/$(classId + '_' + request.auth.uid))
+      );
+
+      allow list: if isSignedIn() && existing().teacherId == request.auth.uid;
+
+      allow create: if isValidId(classId)
+        && isSignedIn()
+        && isValidPhysicsClass(incoming(), classId)
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time
+        && isTeacher(request.auth.uid)
+        && existsAfter(/databases/$(database)/documents/classJoinCodes/$(incoming().joinCode));
+
+      allow update: if isValidId(classId)
+        && isSignedIn()
+        && isValidPhysicsClass(incoming(), classId)
+        && existing().teacherId == request.auth.uid
+        && incoming().teacherId == existing().teacherId
+        && incoming().classId == existing().classId
+        && incoming().joinCode == existing().joinCode
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && isTeacher(request.auth.uid)
+        && incoming().diff(existing()).affectedKeys().hasOnly(['className', 'classGrade', 'description', 'teacherName', 'updatedAt']);
+
+      allow delete: if isValidId(classId)
+        && isSignedIn()
+        && existing().teacherId == request.auth.uid
+        && isTeacher(request.auth.uid);
+    }
+
+    // Join code lookup: single get allowed for signed-in users, list forbidden
+    match /classJoinCodes/{joinCode} {
+      allow get: if isValidJoinCode(joinCode) && isSignedIn();
+      allow list: if false;
+
+      allow create: if isValidJoinCode(joinCode)
+        && isSignedIn()
+        && isValidClassJoinCode(incoming(), joinCode)
+        && incoming().createdAt == request.time
+        && isTeacher(request.auth.uid)
+        && existsAfter(/databases/$(database)/documents/classes/$(incoming().classId));
+
+      allow update: if isValidJoinCode(joinCode)
+        && isSignedIn()
+        && isValidClassJoinCode(incoming(), joinCode)
+        && existing().teacherId == request.auth.uid
+        && incoming().teacherId == existing().teacherId
+        && incoming().classId == existing().classId
+        && incoming().joinCode == existing().joinCode
+        && incoming().createdAt == existing().createdAt
+        && isTeacher(request.auth.uid)
+        && incoming().diff(existing()).affectedKeys().hasOnly(['className', 'classGrade', 'teacherName']);
+
+      allow delete: if isValidJoinCode(joinCode)
+        && isSignedIn()
+        && existing().teacherId == request.auth.uid
+        && isTeacher(request.auth.uid);
+    }
+
+    // Class memberships: student joins with deterministic ID {classId}_{studentId}
+    match /classMemberships/{membershipId} {
+      allow get: if isValidCompositeId(membershipId) && isSignedIn() && (
+        existing().studentId == request.auth.uid
+        || existing().teacherId == request.auth.uid
+      );
+
+      allow list: if isSignedIn() && (
+        existing().studentId == request.auth.uid
+        || existing().teacherId == request.auth.uid
+      );
+
+      allow create: if isValidCompositeId(membershipId)
+        && isSignedIn()
+        && isValidClassMembership(incoming(), membershipId)
+        && incoming().studentId == request.auth.uid
+        && membershipId == incoming().classId + '_' + request.auth.uid
+        && incoming().joinedAt == request.time
+        && isStudent(request.auth.uid)
+        && exists(/databases/$(database)/documents/classes/$(incoming().classId))
+        && get(/databases/$(database)/documents/classes/$(incoming().classId)).data.teacherId == incoming().teacherId
+        && get(/databases/$(database)/documents/classes/$(incoming().classId)).data.joinCode == incoming().joinCode
+        && get(/databases/$(database)/documents/classes/$(incoming().classId)).data.classGrade == incoming().classGrade;
+
+      allow update: if isValidCompositeId(membershipId)
+        && isSignedIn()
+        && isValidClassMembership(incoming(), membershipId)
+        && existing().studentId == request.auth.uid
+        && incoming().membershipId == existing().membershipId
+        && incoming().classId == existing().classId
+        && incoming().teacherId == existing().teacherId
+        && incoming().joinCode == existing().joinCode
+        && incoming().studentId == existing().studentId
+        && incoming().joinedAt == existing().joinedAt
+        && isStudent(request.auth.uid)
+        && incoming().diff(existing()).affectedKeys().hasOnly(['studentName', 'studentSelectedClass']);
+
+      allow delete: if isValidCompositeId(membershipId) && isSignedIn() && (
+        existing().studentId == request.auth.uid
+        || existing().teacherId == request.auth.uid
+      );
+    }
+
+    // Student progress: owned by student, readable by teachers of joined classes
+    match /studentProgress/{progressId} {
+      allow get: if isValidCompositeId(progressId) && isSignedIn() && (
+        existing().studentId == request.auth.uid
+        || request.auth.uid in existing().teacherIds
+      );
+
+      allow list: if isSignedIn() && (
+        existing().studentId == request.auth.uid
+        || request.auth.uid in existing().teacherIds
+      );
+
+      allow create: if isValidCompositeId(progressId)
+        && isSignedIn()
+        && isValidStudentProgress(incoming(), progressId)
+        && incoming().updatedAt == request.time
+        && (!('completedAt' in incoming()) || incoming().completedAt == request.time)
+        && isStudent(request.auth.uid);
+
+      allow update: if isValidCompositeId(progressId)
+        && isSignedIn()
+        && isValidStudentProgress(incoming(), progressId)
+        && existing().studentId == request.auth.uid
+        && incoming().progressId == existing().progressId
+        && incoming().studentId == existing().studentId
+        && incoming().experimentId == existing().experimentId
+        && incoming().updatedAt == request.time
+        && (!('completedAt' in incoming()) || (('completedAt' in existing()) ? incoming().completedAt == existing().completedAt : incoming().completedAt == request.time))
+        && isStudent(request.auth.uid)
+        && (existing().completionStatus != 'completed' || incoming().completionStatus == 'completed')
+        && (
+          incoming().diff(existing()).affectedKeys().hasOnly(['classId', 'classGrade', 'completionStatus', 'recordedObservations', 'quizScore', 'quizTotal', 'teacherIds', 'completedAt', 'updatedAt'])
+        );
+
+      allow delete: if false;
+    }
+
+    // Assessment results: created by student, readable by student and teachers of joined classes
+    match /assessmentResults/{resultId} {
+      allow get: if isValidCompositeId(resultId) && isSignedIn() && (
+        existing().studentId == request.auth.uid
+        || request.auth.uid in existing().teacherIds
+      );
+
+      allow list: if isSignedIn() && (
+        existing().studentId == request.auth.uid
+        || request.auth.uid in existing().teacherIds
+      );
+
+      allow create: if isValidCompositeId(resultId)
+        && isSignedIn()
+        && isValidAssessmentResult(incoming(), resultId)
+        && incoming().completedAt == request.time
+        && isStudent(request.auth.uid);
+
+      allow update: if isValidCompositeId(resultId)
+        && isSignedIn()
+        && isValidAssessmentResult(incoming(), resultId)
+        && existing().studentId == request.auth.uid
+        && incoming().resultId == existing().resultId
+        && incoming().studentId == existing().studentId
+        && incoming().experimentId == existing().experimentId
+        && incoming().score == existing().score
+        && incoming().totalQuestions == existing().totalQuestions
+        && incoming().completedAt == existing().completedAt
+        && isStudent(request.auth.uid)
+        && incoming().diff(existing()).affectedKeys().hasOnly(['teacherIds', 'studentName']);
+
+      allow delete: if false;
+    }
+  }
+}

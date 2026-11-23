@@ -1,0 +1,8 @@
+{
+  "name": "Remix Remix Remix PHYSIX AI",
+  "description": "Experience Physics. Understand Everything. Transform NCERT Physics textbook pages into interactive 2D and 3D physics simulations in English, Kannada, and Hindi.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

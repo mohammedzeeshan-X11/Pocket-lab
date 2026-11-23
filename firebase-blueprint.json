@@ -1,0 +1,412 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Authenticated PHYSIX AI user profile for a student or teacher.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "minLength": 3,
+          "maxLength": 254
+        },
+        "role": {
+          "type": "string",
+          "enum": ["student", "teacher"]
+        },
+        "selectedClass": {
+          "type": "integer"
+        },
+        "schoolOrSubject": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["uid", "name", "email", "role", "createdAt", "updatedAt"]
+    },
+    "PhysicsClass": {
+      "title": "PhysicsClass",
+      "description": "Classroom created and managed by a teacher.",
+      "type": "object",
+      "properties": {
+        "classId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "teacherId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "teacherName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "className": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 100
+        },
+        "classGrade": {
+          "type": "integer"
+        },
+        "joinCode": {
+          "type": "string",
+          "minLength": 6,
+          "maxLength": 12,
+          "pattern": "^[A-Z0-9]+$"
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 300
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "classId",
+        "teacherId",
+        "teacherName",
+        "className",
+        "classGrade",
+        "joinCode",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "ClassJoinCode": {
+      "title": "ClassJoinCode",
+      "description": "Direct lookup document mapping an uppercase join code to a class.",
+      "type": "object",
+      "properties": {
+        "joinCode": {
+          "type": "string",
+          "minLength": 6,
+          "maxLength": 12,
+          "pattern": "^[A-Z0-9]+$"
+        },
+        "classId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "teacherId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "teacherName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "className": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 100
+        },
+        "classGrade": {
+          "type": "integer"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "joinCode",
+        "classId",
+        "teacherId",
+        "teacherName",
+        "className",
+        "classGrade",
+        "createdAt"
+      ]
+    },
+    "ClassMembership": {
+      "title": "ClassMembership",
+      "description": "Student enrollment record linking a student to a teacher's class.",
+      "type": "object",
+      "properties": {
+        "membershipId": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 256,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "classId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "teacherId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "teacherName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "className": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 100
+        },
+        "classGrade": {
+          "type": "integer"
+        },
+        "joinCode": {
+          "type": "string",
+          "minLength": 6,
+          "maxLength": 12,
+          "pattern": "^[A-Z0-9]+$"
+        },
+        "studentId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "studentName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "studentSelectedClass": {
+          "type": "integer"
+        },
+        "joinedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "membershipId",
+        "classId",
+        "teacherId",
+        "teacherName",
+        "className",
+        "classGrade",
+        "joinCode",
+        "studentId",
+        "studentName",
+        "studentSelectedClass",
+        "joinedAt"
+      ]
+    },
+    "StudentProgress": {
+      "title": "StudentProgress",
+      "description": "Experiment completion and observation record for a student.",
+      "type": "object",
+      "properties": {
+        "progressId": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 256,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "studentId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "classId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "classGrade": {
+          "type": "integer"
+        },
+        "moduleId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "experimentId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "experimentTitle": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "completionStatus": {
+          "type": "string",
+          "enum": ["in_progress", "completed"]
+        },
+        "recordedObservations": {
+          "type": "array"
+        },
+        "quizScore": {
+          "type": "integer"
+        },
+        "quizTotal": {
+          "type": "integer"
+        },
+        "teacherIds": {
+          "type": "array"
+        },
+        "completedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "progressId",
+        "studentId",
+        "classId",
+        "classGrade",
+        "moduleId",
+        "experimentId",
+        "experimentTitle",
+        "completionStatus",
+        "recordedObservations",
+        "teacherIds",
+        "updatedAt"
+      ]
+    },
+    "AssessmentResult": {
+      "title": "AssessmentResult",
+      "description": "Quiz attempt score recorded by a student for an experiment.",
+      "type": "object",
+      "properties": {
+        "resultId": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 256,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "studentId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "studentName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "classId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "classGrade": {
+          "type": "integer"
+        },
+        "experimentId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "experimentTitle": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "score": {
+          "type": "integer"
+        },
+        "totalQuestions": {
+          "type": "integer"
+        },
+        "teacherIds": {
+          "type": "array"
+        },
+        "completedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "resultId",
+        "studentId",
+        "studentName",
+        "classId",
+        "classGrade",
+        "experimentId",
+        "experimentTitle",
+        "score",
+        "totalQuestions",
+        "teacherIds",
+        "completedAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/users/{uid}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "Private user profiles indexed by Firebase Auth UID."
+    },
+    "/classes/{classId}": {
+      "schema": { "$ref": "#/entities/PhysicsClass" },
+      "description": "Classes owned by teachers."
+    },
+    "/classJoinCodes/{joinCode}": {
+      "schema": { "$ref": "#/entities/ClassJoinCode" },
+      "description": "Single-document lookup mapping join codes to classes."
+    },
+    "/classMemberships/{membershipId}": {
+      "schema": { "$ref": "#/entities/ClassMembership" },
+      "description": "Student memberships in classes using deterministic {classId}_{studentId} IDs."
+    },
+    "/studentProgress/{progressId}": {
+      "schema": { "$ref": "#/entities/StudentProgress" },
+      "description": "Student experiment completion and observation records using {studentId}_{experimentId} IDs."
+    },
+    "/assessmentResults/{resultId}": {
+      "schema": { "$ref": "#/entities/AssessmentResult" },
+      "description": "Student assessment quiz submissions."
+    }
+  }
+}
